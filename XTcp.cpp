@@ -33,13 +33,12 @@ XTcp::XTcp() {
         WSADATA ws;
         WSAStartup(MAKEWORD(2, 2), &ws);
     }
-
 #endif
 }
 
 int XTcp::CreateSocket() {
     //创建socket
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == -1) {
         printf("create socket failed!\n");       
     }
@@ -59,10 +58,10 @@ bool XTcp::Bind(unsigned short port) {
     //设置端口号，并转换为网络字节序
     saddr.sin_port = htons(port);
     //设置IP地址为「本机任意地址」，并转换为网络字节序
-    saddr.sin_addr.s_addr = htonl(0);
+    saddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     //绑定Socket和地址
-    if (bind(sock, (sockaddr*)&saddr, sizeof(saddr)) != 0) {
+    if (::bind(sock, (sockaddr*)&saddr, sizeof(saddr)) != 0) {
         printf("bind port %d failed!\n", port);
         return false;
     }
@@ -82,24 +81,20 @@ XTcp XTcp::Accept() {
     sockaddr_in caddr;
 #ifdef _WIN32
     int len = sizeof(caddr);
-    #define ACCEPT_FAILED_VAL INVALID_SOCKET
 #else
     socklen_t len = sizeof(caddr);
-    #define ACCEPT_FAILED_VAL -1
 #endif
 
     //int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
-    int client = accept(sock, (sockaddr*)&caddr, &len);
-    if (client == ACCEPT_FAILED_VAL) {
+    int client = ::accept(sock, (sockaddr*)&caddr, &len);
+    if (client  <= 0) {
         return tcp;
     }
     printf("accept client %d\n", client);
     tcp.ip = inet_ntoa(caddr.sin_addr);
     tcp.port = ntohs(caddr.sin_port);
+    tcp.sock = client;
     printf("client ip is %s,port is %d\n", tcp.ip.c_str(), tcp.port);
-
-    // 删掉临时宏，避免污染
-    #undef ACCEPT_FAILED_VAL
 
     return tcp;
 }
@@ -109,6 +104,7 @@ void XTcp::Close() {
         return;
     }
     closesocket(sock);
+    sock = 0;
 }
 
 int XTcp::Recv(char* buf, int bufsize) {
@@ -117,6 +113,8 @@ int XTcp::Recv(char* buf, int bufsize) {
 }
 
 int XTcp::Send(const char* buf, int sendsize) {
+    if (buf == nullptr || sendsize <= 0) return 0;
+
     int sendedSize = 0;
     while (sendedSize != sendsize) {
         int len = send(sock, buf + sendedSize, sendsize - sendedSize,0);

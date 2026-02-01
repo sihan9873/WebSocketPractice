@@ -7,6 +7,7 @@
 #pragma comment(lib, "ws2_32.lib")
 typedef SOCKET socket_t;
 #define socklen_t int
+#define sleep_ms(x) Sleep(x)
 #else
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -14,6 +15,7 @@ typedef SOCKET socket_t;
 #include <arpa/inet.h>
 #define closesocket close
 typedef int socket_t;
+#define sleep_ms(x) usleep(x * 1000)
 #endif
 #include <thread>
 #include <cstdio>
@@ -21,12 +23,17 @@ typedef int socket_t;
 #include <iostream>
 #include <cstring>
 #include <string>
+
 #include "XTcp.h"
 
 using namespace std;
 
 class TcpThread {
 public:
+    ~TcpThread() {
+        client.Close();
+    }
+
     void Main() {
         //读取数据
         char buf[1024] = { 0 };
@@ -34,10 +41,11 @@ public:
 
             int recvlen = client.Recv(buf, sizeof(buf) - 1);
             if (recvlen <= 0) {
-                printf("client %d disconnect or recv error\n", client);
+                printf("client %d disconnect or recv error\n", client.sock);
                 break;
             }
             buf[recvlen] = '\0';
+
             if (strstr(buf, "quit") != NULL) {
                 const char re[] = "quit success!";
                 client.Send(re, strlen(re) + 1);
@@ -45,14 +53,14 @@ public:
             }
             // 只有收到换行符，才回复 ok
             if (buf[recvlen - 1] == '\n') {
-                int sendlen = client.Send("ok\n", 4);
+                int sendlen = client.Send("ok\n", 3);
                 if (sendlen <= 0) {
-                    printf("send to client %d failed\n", client);
+                    printf("send to client %d failed\n", client.sock);
                     break;
                 }
             }
 
-            printf("recv: %s\n", buf);
+            printf("recv from client %d: %s", client.sock, buf);
         }
         client.Close();
         //释放new的TcpThread对象,避免内存泄漏
@@ -78,6 +86,7 @@ int main(int argc, char** argv)
 
         if(client.sock <= 0) {
             printf("accept get invalid client socket, skip...\n");
+            sleep_ms(500);
             continue;
         }
 

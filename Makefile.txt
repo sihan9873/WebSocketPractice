@@ -1,0 +1,11 @@
+CXX = g++
+CXXFLAGS = -Wall -g -std=c++11
+LDFLAGS = -lpthread
+TARGET = main
+SRC = main.cpp
+
+$(TARGET): main.cpp XTcp.cpp
+	$(CC) $(CFLAGS) main.cpp XTcp.cpp -o $(TARGET) $(LDFLAGS)
+
+clean:
+	rm -f $(TARGET) *.o

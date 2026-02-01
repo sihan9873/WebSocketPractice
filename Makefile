@@ -1,16 +1,20 @@
-# 编译器：C++必须用g++，不能用gcc
-CXX = g++
-# 编译参数：i-Wall显示警告，-g生成调试信息，方便调试Socket程序
-CXXFLAGS = -Wall -g -std=c++11
-# 目标可执行文件名：和你的源文件一致 → testsockte
+CC = g++
+CFLAGS = -Wall -g -std=c++11
+LDFLAGS = -lpthread
+# 所有源文件（main.cpp + XTcp.cpp）
+SRCS = main.cpp XTcp.cpp
+# 自动生成中间目标文件（.cpp -> .o）
+OBJS = $(SRCS:.cpp=.o)
 TARGET = main
-# 实际源文件：你的C++文件 → testsockte.cpp（无中间e，cpp后缀）
-SRC = main.cpp
 
-# 核心编译规则：执行make就会编译SRC生成TARGET
-$(TARGET): $(SRC)
-	$(CXX) $(CXXFLAGS) $(SRC) -o $(TARGET) -lpthread
+# 最终目标依赖所有.o文件
+$(TARGET): $(OBJS)
+	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
 
-# 清理规则：执行make clean删除可执行文件，方便重新编译
+# 每个.o文件依赖对应的.cpp和头文件
+%.o: %.cpp XTcp.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# 清理指令
 clean:
-	rm -rf $(TARGET) *.o
+	rm -f $(TARGET) $(OBJS)
